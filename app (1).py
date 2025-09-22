@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import altair as alt  # Для графика
 
 st.title("HR-ассистент по страхованию сотрудников (динамические рекомендации)")
 
@@ -12,7 +11,6 @@ if uploaded_file:
 
     # 2️⃣ Сегментация
     df['Group'] = 'Остальные'
-
     df.loc[(df['age_score'] < 30) & (df['dependents_score'] == 0) & (df['health_score'] >= 3), 'Group'] = 'Молодые без детей, низкий риск'
     df.loc[(df['age_score'] < 30) & ((df['dependents_score'] > 0) | (df['health_score'] == 2)), 'Group'] = 'Молодые с детьми / средний риск'
     df.loc[(df['age_score'] >= 30) & (df['age_score'] < 50) & (df['dependents_score'] > 0), 'Group'] = 'Взрослые с детьми / средний риск'
@@ -29,14 +27,9 @@ if uploaded_file:
     st.subheader("Сегментация сотрудников")
     st.table(group_stats)
 
-    # 4️⃣ Бар-чарт с количеством сотрудников по группам
+    # 4️⃣ Надежный bar chart
     st.subheader("График распределения сотрудников по группам")
-    chart = alt.Chart(group_stats).mark_bar().encode(
-        x=alt.X('Group', sort='-y', title='Группа сотрудников'),
-        y=alt.Y('Количество', title='Количество сотрудников'),
-        color='Group'
-    )
-    st.altair_chart(chart, use_container_width=True)
+    st.bar_chart(group_stats.set_index('Group')['Количество'])
 
     # 5️⃣ Генерация динамических рекомендаций
     def generate_recommendation(row):
@@ -62,6 +55,10 @@ if uploaded_file:
 
     group_stats['Рекомендация'] = group_stats.apply(generate_recommendation, axis=1)
 
-    st.subheader("Динамические рекомендации по группам")
-    for idx, row in group_stats.iterrows():
+    # 6️⃣ Фильтр по группе
+    st.subheader("Выберите группу для просмотра рекомендаций")
+    selected_group = st.selectbox("Группа сотрудников", options=group_stats['Group'].tolist())
+
+    filtered = group_stats[group_stats['Group'] == selected_group]
+    for idx, row in filtered.iterrows():
         st.write(f"**{row['Group']} ({row['Количество']} сотрудников):** {row['Рекомендация']}")
